@@ -1,5 +1,7 @@
 # WeChat Local Read skill
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Read authorized Windows WeChat text history and locally cached media through a standalone CLI. The database and media backend is derived from [wechatauto-replica v1.2.6](https://github.com/fanyuantaier/wechatauto-replica/tree/v1.2.6), under Apache-2.0.
 
 ## Setup
