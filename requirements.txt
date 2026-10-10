@@ -1,0 +1,5 @@
+psutil
+cryptography
+zstandard
+Pillow
+imageio-ffmpeg
