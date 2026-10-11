@@ -117,6 +117,25 @@ def make_database(backend, state, account=None, db_dir=None):
     if Path(account).name != account or account in ('.', '..'):
         raise ValueError('Account must be a directory name.')
     class ScopedDB(backend.WeChatDB):
+        def _msg_row_to_dict(self, row):
+            result = super()._msg_row_to_dict(row)
+            shard = result.get('shard', '')
+            cache = getattr(self, '_local_sender_maps', {})
+            if shard not in cache:
+                matches = [rel for rel in self._message_dbs()
+                           if Path(rel).name == shard or rel.replace('\\', '__').replace('/', '__') == shard]
+                mapping = {}
+                if len(matches) == 1:
+                    conn = self._open(matches[0])
+                    try:
+                        mapping = dict(conn.execute('SELECT rowid, user_name FROM Name2Id'))
+                    finally:
+                        conn.close()
+                cache[shard] = mapping
+                self._local_sender_maps = cache
+            result['sender_username'] = cache[shard].get(row['real_sender_id'], '')
+            return result
+
         def _try_other_accounts(self):
             return False
 

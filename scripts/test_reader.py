@@ -11,6 +11,9 @@ import struct
 
 
 class FakeDB:
+    def _msg_row_to_dict(self, row):
+        return dict(row, sender_username='unrelated_global_contact')
+
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
@@ -23,6 +26,24 @@ class FakeDB:
 
 
 class ReaderTests(unittest.TestCase):
+    def test_sender_ids_are_local_to_each_shard(self):
+        import sqlite3
+        db = reader.make_database(self.backend(['root/a']), Path('private'))
+        db._message_dbs = lambda: ['message/message_0.db', 'message/message_1.db']
+        def open_shard(rel):
+            conn = sqlite3.connect(':memory:')
+            conn.execute('CREATE TABLE Name2Id(user_name TEXT)')
+            conn.execute('INSERT INTO Name2Id(rowid,user_name) VALUES(2,?)',
+                         ('alice' if rel.endswith('_0.db') else 'bob',))
+            return conn
+        db._open = open_shard
+        for shard, expected in [('message__message_0.db','alice'),
+                                ('message__message_1.db','bob'), ('missing.db','')]:
+            row = {'shard':shard, 'real_sender_id':2}
+            self.assertEqual(db._msg_row_to_dict(row)['sender_username'], expected)
+        self.assertEqual(db._msg_row_to_dict({'shard':'message__message_0.db',
+                         'real_sender_id':99})['sender_username'], '')
+
     def backend(self, accounts):
         return SimpleNamespace(WeChatDB=FakeDB, auto_detect_db_dir=lambda: 'root',
                                _find_account_dirs=lambda root: accounts)
